@@ -1,0 +1,164 @@
+- config: generic-flags
+  flags:
+    max_epochs: 100
+    learning-rate: 0.01
+    gpus: "0,"
+    checkpoint-monitor: "loss/val"
+
+- config: generic-recurrent-flags
+  flags:
+    $include: generic-flags
+    learning-rate-rnn: 0.001
+    recurrent-cells:
+        default: "2 2"
+        arg-split: yes
+
+- config: generic-sequence-flags
+  flags:
+    $include: generic-recurrent-flags
+    steps: 200
+
+- config: generic-enc-dec-flags
+  flags:
+    $include: generic-flags
+    encoder-cells:
+        default: "2 2"
+        arg-split: yes
+    decoder-cells:
+        default: "2 2"
+        arg-split: yes
+
+- config: model-synth
+  operations:
+    addition:
+        main: 'deep_memory_update.experiments.addition_sequence.{{ name }}_training'
+        flags:
+            $include: generic-sequence-flags
+            min-length: 100
+        output-scalars: off
+        sourcecode:
+            select:
+                - "deep_memory_update/*"
+            exclude:
+                - "**/__pycache__"
+    noisy:
+        main: 'deep_memory_update.experiments.noisy_sequence.{{ name }}_training'
+        flags:
+            $include: generic-sequence-flags
+            seq-len: 100
+        output-scalars: off
+        sourcecode:
+            exclude:
+                - "__pycache__"
+            select:
+                - "deep_memory_update/*"
+    order:
+        main: 'deep_memory_update.experiments.order_sequence.{{ name }}_training'
+        flags:
+            $include: generic-sequence-flags
+            min-length: 100
+        output-scalars: off
+        sourcecode:
+            select:
+                - "deep_memory_update/**/*.py"
+
+- config: model-real
+  operations:
+    polyphonic:
+        main: 'deep_memory_update.experiments.polyphonic_music.{{ name }}_training'
+        flags:
+            $include: generic-recurrent-flags
+            recurrent-cells: "36"
+            max_epochs: 500
+            weight-decay: 0
+        output-scalars: off
+        requires:
+            - file: "data/polyphonic-music/Nottingham.mat"
+              target-path: "data/polyphonic-music"
+        sourcecode:
+            select:
+                - "deep_memory_update/**/*.py"
+    penn_treebank:
+        main: 'deep_memory_update.experiments.penn_treebank.{{ name }}_training'
+        flags:
+            $include: generic-recurrent-flags
+            recurrent-cells: "100 100 100"
+            embedding-size: 64
+            weight-decay: 0
+            max_epochs: 40
+            stateful: True
+            metrics: "Accuracy Perplexity"
+            dense-cells:
+                default: "100"
+                arg-split: yes
+        output-scalars: off
+        requires:
+            - url: "https://raw.githubusercontent.com/wojzaremba/lstm/master/data/ptb.train.txt"
+              target-path: "data/penn-treebank"
+              sha256: "fcea919f6cf83f35d4d00c6cbf08040d13d4155226340912e2fef9c9c4102cbf"
+            - url: "https://raw.githubusercontent.com/wojzaremba/lstm/master/data/ptb.valid.txt"
+              target-path: "data/penn-treebank"
+              sha256: "c9fe6985fe0d4ccb578183407d7668fc6066c20700cb4cf87d8ff1cc34df1bf2"
+            - url: "https://raw.githubusercontent.com/wojzaremba/lstm/master/data/ptb.test.txt"
+              target-path: "data/penn-treebank"
+              sha256: "dd65dff31e70846b2a6030a87482edcd5d199130cdcfa1f3dccbb033728deee0"
+        sourcecode:
+            select:
+                - "deep_memory_update/**/*.py"
+    translation:
+      main: 'deep_memory_update.experiments.translation.{{ name }}_training'
+      flags:
+          $include: generic-enc-dec-flags
+          lang-pair: "spa-eng"
+          decoder-cells: "700"
+          encoder-cells: "700"
+          max_epochs: 50
+          scheduler-gamma: 1.0
+          embedding-dec-size: 650
+          embedding-enc-size: 650
+          weight-decay: 0
+          teacher-forcing-ratio: 1.0
+          metrics: "Accuracy Perplexity"
+          checkpoint-monitor: "acc/val"
+          checkpoint-mode: "max"
+          gpus: "1,"
+      output-scalars: off
+      requires:
+          - url: "https://www.manythings.org/anki/spa-eng.zip"
+            target-path: "data/translation/spa-eng"
+          - url: "https://www.manythings.org/anki/por-eng.zip"
+            target-path: "data/translation/por-eng"
+          - url: "https://www.manythings.org/anki/deu-eng.zip"
+            target-path: "data/translation/deu-eng"
+      sourcecode:
+          select:
+              - "deep_memory_update/**/*.py"
+
+- model: lstm
+  extends: model-synth
+  params:
+    name: lstm
+
+- model: gru
+  extends: model-synth
+  params:
+      name: gru
+
+- model: rnn
+  extends: model-synth
+  params:
+    name: rnn
+
+- model: dmu
+  extends: 
+    - model-synth
+    - model-real
+  params:
+    name: dmu
+
+- model: rhn
+  extends:
+    - model-synth
+    - model-real
+  params:
+    name: rhn

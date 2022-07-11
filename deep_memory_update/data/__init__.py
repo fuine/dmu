@@ -1,0 +1,7 @@
+from .addition_sequence import AdditionSequenceDataModule
+from .data_module import BaseDataModule
+from .noisy_sequence import NoisySequenceDataModule
+from .order_sequence import OrderSequenceDataModule
+from .penn_treebank import PennTreebankDataModule
+from .polyphonic_music import PolyphonicMusicDataModule
+from .translation import TranslationDataModule
